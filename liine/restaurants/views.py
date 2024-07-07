@@ -1,7 +1,7 @@
 import datetime
 
 from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponseBadRequest
 
 from restaurants.forms import DatetimeStringForm
 from restaurants.models import Restaurant
@@ -24,7 +24,11 @@ def search(request):
   time = datetime_obj.time()
   day = datetime_obj.weekday()
 
-  restaurants = Restaurant.objects.filter(operatingday_set__name=day, operatingday_set__operatinghours_set__opening_time__lte=time, operatingday_set__operatinghours_set__closing_time__gte=time).distinct()
-  
+  restaurants = Restaurant.objects.filter(
+    operatingday_set__name=day,
+    operatingday_set__operatinghours_set__opening_time__lte=time,
+    operatingday_set__operatinghours_set__closing_time__gte=time
+    ).distinct()
+
   return render(request, "restaurants/results.html", {"restaurants": restaurants})
 

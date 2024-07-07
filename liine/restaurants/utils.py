@@ -42,7 +42,7 @@ def parse_days(hours_set):
     else:
       # should just be a single day, do the single day thing. 
       # There are no restaurants in the data set that meet this criteria
-      # so this block should never be reached.
+      # so this block should never be reached but cover our bases should the data set expand.
       days.append(DAY_TO_NUMBER_MAPPING[day_pattern_found])
 
   return days
@@ -70,8 +70,6 @@ def parse_time(hours_set):
   return [datetime.datetime.strptime(hours, '%I:%M %p').time() for hours in hours_massaged]
 
 def parse_day_and_hours(hours_set):
-  # dict with each day being the key, the value being an array of start and end time tuples
-
   opening_time, closing_time = parse_time(hours_set)
 
   days = parse_days(hours_set)
@@ -86,8 +84,39 @@ def add_to_db(name, days, opening_time, closing_time):
       name=day,
       restaurant=restaurant
     )
-    operating_hours = OperatingHours.objects.create(
+    OperatingHours.objects.create(
       opening_time=opening_time,
       closing_time=closing_time,
       operating_day=operating_day
     )
+
+def parse_row(row):
+  name = row['Restaurant Name']
+  split_row = row['Hours'].split('/')
+  if len(split_row) > 1:
+    for hours_set in split_row:
+      days, opening_time, closing_time = parse_day_and_hours(hours_set)
+      # account for when the closing time is technically the next day, ex. midnight or 4 am
+      # add a new OperatingDay to the set to account for this window of operation
+      if closing_time < opening_time:
+        if days[-1] + 1 != 6:
+          # add an extra day to the list of days, unless open sunday as the next day loops back to monday
+          days.append(days[-1] + 1)
+          technical_closing_time = closing_time
+          technical_opening_time = datetime.time(0, 0, 0)
+          # window of service on the next day is from midnight until whatever in the am
+          add_to_db(name, days, technical_opening_time, technical_closing_time)
+        # since the operating window extends into the next day, close this day's operating window at 11:59
+        closing_time = datetime.time(23, 59, 59, 999999)
+      add_to_db(name, days, opening_time, closing_time)
+  else:
+    days, opening_time, closing_time = parse_day_and_hours(split_row[0])
+    if closing_time < opening_time:
+      if days[-1] + 1 != 6:
+        # same as above
+        days.append(days[-1] + 1)
+        technical_closing_time = closing_time
+        technical_opening_time = datetime.time(0, 0, 0)
+        add_to_db(name, days, technical_opening_time, technical_closing_time)
+    closing_time = datetime.time(23, 59, 59, 999999)
+    add_to_db(name, days, opening_time, closing_time)
