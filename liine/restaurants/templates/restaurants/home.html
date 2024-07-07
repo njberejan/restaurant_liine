@@ -1,0 +1,7 @@
+<h3>What restaurants near Raleigh are open? Enter a python datetime object string and submit to find out.</h3>
+<p>Format should be '%Y-%m-%d %H:%M:%S.%f'</p>
+<form action="/search/" method="get">
+  {% csrf_token %}
+  {{ form }}
+  <input type="submit" value="Submit"/>
+</form>

@@ -70,10 +70,11 @@ def parse_time(hours_set):
   return [datetime.datetime.strptime(hours, '%I:%M %p').time() for hours in hours_massaged]
 
 def parse_day_and_hours(hours_set):
-
-  days = parse_days(hours_set)
+  # dict with each day being the key, the value being an array of start and end time tuples
 
   opening_time, closing_time = parse_time(hours_set)
+
+  days = parse_days(hours_set)
 
   return days, opening_time, closing_time
 

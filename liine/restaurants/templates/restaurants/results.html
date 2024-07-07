@@ -1,0 +1,12 @@
+{% if restaurants %}
+<h3>These {{ restaurants.count }} restaurants are open on the provided date at the provided time:</h3>
+<ul>
+  {% for restaurant in restaurants %}
+  <li>
+    {{ restaurant.name }}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<h3>No restaurants are open at the provided time.</h3>
+{% endif %}
