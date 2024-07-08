@@ -1,4 +1,4 @@
-{% if restaurants %}
+{% if restaurants.count > 0 %}
 <h3>These {{ restaurants.count }} restaurants are open on the provided date at the provided time:</h3>
 <ul>
   {% for restaurant in restaurants %}

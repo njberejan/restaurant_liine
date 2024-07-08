@@ -1,13 +1,12 @@
 import datetime
 from unittest.mock import patch
 
-from django.test import TestCase, Client
-from django.urls import reverse
+from django.test import TestCase
 
-from restaurants.utils import parse_days, parse_time, parse_day_and_hours, parse_row
+from restaurants.models import Restaurant
+from restaurants.utils import parse_days, parse_time, parse_day_and_hours, parse_row, execute_search
 
-class UtilsTestCase(TestCase):
-
+class BaseTestCase(TestCase):
   def setUp(self):
     self.row = {
       "Restaurant Name": "Bonchon",
@@ -45,6 +44,24 @@ class UtilsTestCase(TestCase):
         }
       }
     }
+    self.test_data_set = [
+      {
+        "Restaurant Name": "Culvers",
+        "Hours": "Mon-Wed 5 pm - 12:30 am / Thu-Fri 5 pm - 1:30 am / Sat 3 pm - 1:30 am / Sun 3 pm - 11:30 pm"
+      },
+      {
+        "Restaurant Name": "Cook Out",
+        "Hours": "	Mon-Sun 11 am - 4 am"
+      },
+      {
+        "Restaurant Name": "Waffle House",
+        "Hours": "	Mon-Sun 12 am - 12 am"
+      },
+    ]
+    for data in self.test_data_set:
+      parse_row(data)
+
+class UtilsTestCase(BaseTestCase):
 
   def test_parse_days_returns_expected(self):
     for hours_set in self.hours_sets:
@@ -82,27 +99,13 @@ class UtilsTestCase(TestCase):
           }
       )
     assert not mock_add_to_db.called
-    
-class ViewsTestCase(TestCase):
-  
-  def setUp(self):
-    self.client = Client()
-    self.test_data_set = [
-      {
-        "Restaurant Name": "Culvers",
-        "Hours": "Mon-Wed 5 pm - 12:30 am / Thu-Fri 5 pm - 1:30 am / Sat 3 pm - 1:30 am / Sun 3 pm - 11:30 pm"
-      },
-      {
-        "Restaurant Name": "Cook Out",
-        "Hours": "	Mon-Sun 11 am - 4 am"
-      },
-      {
-        "Restaurant Name": "Waffle House",
-        "Hours": "	Mon-Sun 12 am - 12 am"
-      },
-    ]
-    for data in self.test_data_set:
-      parse_row(data)
+
+  def test_execute_search(self):
+    actual = [rest for rest in execute_search('2024-07-08 11:00:00.0')]
+    expected = [Restaurant.objects.get(name="Cook Out"), Restaurant.objects.get(name="Waffle House")]
+    self.assertEqual(expected, actual)
+
+class ViewsTestCase(BaseTestCase):
 
   def test_home_view(self):
     response = self.client.get('/')
@@ -114,3 +117,8 @@ class ViewsTestCase(TestCase):
     self.assertEqual(200, response.status_code)
     self.assertIn(b'Waffle House', response.content)
     self.assertIn(b'Cook Out', response.content)
+
+  def test_search_view_invalid_timestring(self):
+    response = self.client.get('/search/', {"timestamp": "2024-07-07 12 PM"})
+    self.assertEqual(400, response.status_code)
+    self.assertIn(b'does not match format', response.content)

@@ -1,5 +1,8 @@
 import re
 import datetime
+from typing import List, Tuple, Union
+
+from django.db.models import QuerySet
 
 from restaurants.models import Restaurant, OperatingDay, OperatingHours
 
@@ -15,7 +18,17 @@ DAY_TO_NUMBER_MAPPING = {
 
 DAYS_RANGE = list(range(7))
 
-def parse_days(hours_set):
+def parse_days(hours_set: str) -> List[int]:
+  """
+  This Python function parses a string representing days of the week with hours and returns a list of
+  corresponding day numbers.
+  
+  :param hours_set: a given string representing hours of operation for a restaurant. The function uses regular
+  expressions to extract the day patterns from the input string and then processes them to determine
+  the days the restaurant is open
+  :type hours_set: str
+  :return: a list of integers representing the days of the week.
+  """
   days = []
   day_pattern = "[A-Za-z]+-[A-Za-z]+, [A-Za-z]+| [A-Za-z]+, [A-Za-z]+-[A-Za-z]+|[A-Za-z]+-[A-Za-z]+|[A-Za-z]{3,}"
   day_pattern_match = re.search(day_pattern, hours_set)
@@ -47,7 +60,18 @@ def parse_days(hours_set):
 
   return days
 
-def parse_time(hours_set):
+def parse_time(hours_set: str) -> List[datetime.time]:
+  """
+  The function `parse_time` takes a string input representing a set of hours in various formats and
+  returns a list of standardized time objects.
+  
+  :param hours_set: a given string representing hours of operation for a restaurant. The function uses regular
+  expressions to extract the hours patterns from the input string and then processes them to determine
+  the what hours the restaurant is open during the day.
+  :type hours_set: str
+  :return: The function `parse_time` is returning a list of `datetime.time` objects after parsing and
+  standardizing the time format from the input `hours_set` string.
+  """
   hours_pattern = "[0-9]+:[0-9]+ [a-z]{2,} - [0-9]+:[0-9]+ [a-z]{2,}|[0-9]+:[0-9]+ [a-z]{2,} - [0-9]+ [a-z]{2,}|[0-9]+ [a-z]{2,} - [0-9]+:[0-9]+ [a-z]{2,}|[0-9]+ [a-z]{2,} - [0-9]+ [a-z]{2,}"
   hours_pattern_match = re.search(hours_pattern, hours_set)
   hours_pattern_found = hours_set[hours_pattern_match.start():hours_pattern_match.end()]
@@ -69,14 +93,14 @@ def parse_time(hours_set):
 
   return [datetime.datetime.strptime(hours, '%I:%M %p').time() for hours in hours_massaged]
 
-def parse_day_and_hours(hours_set):
+def parse_day_and_hours(hours_set: str) -> Tuple[Union[int, datetime.time]]:
   opening_time, closing_time = parse_time(hours_set)
 
   days = parse_days(hours_set)
 
   return days, opening_time, closing_time
 
-def add_to_db(name, days, opening_time, closing_time):
+def add_to_db(name: str, days: List[int], opening_time: datetime.time, closing_time: datetime.time) -> None:
   restaurant, _ = Restaurant.objects.get_or_create(name=name)
 
   for day in days:
@@ -90,7 +114,14 @@ def add_to_db(name, days, opening_time, closing_time):
       operating_day=operating_day
     )
 
-def parse_row(row):
+def parse_row(row: str) -> None:
+  """
+  This function parses restaurant operating hours from a given row of data, accounting for cases where
+  closing time extends into the next day.
+  
+  :param row: a row of data containing information about a restaurant's name and operating hours. 
+  :type row: str
+  """
   name = row['Restaurant Name']
   split_row = row['Hours'].split('/')
   if len(split_row) > 1:
@@ -120,3 +151,16 @@ def parse_row(row):
         add_to_db(name, days, technical_opening_time, technical_closing_time)
     closing_time = datetime.time(23, 59, 59, 999999)
     add_to_db(name, days, opening_time, closing_time)
+
+
+def execute_search(time_string: str) -> QuerySet:
+  time_string = time_string.replace("'", '').replace('"', '')  # clean the string
+  datetime_obj = datetime.datetime.strptime(time_string, '%Y-%m-%d %H:%M:%S.%f')
+  time = datetime_obj.time()
+  day = datetime_obj.weekday()
+
+  return Restaurant.objects.filter(
+    operatingday_set__name=day,
+    operatingday_set__operatinghours_set__opening_time__lte=time,
+    operatingday_set__operatinghours_set__closing_time__gte=time
+    ).distinct()
