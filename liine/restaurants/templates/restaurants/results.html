@@ -1,12 +1,22 @@
-{% if restaurants.count > 0 %}
-<h3>These {{ restaurants.count }} restaurants are open on the provided date at the provided time:</h3>
-<ul>
-  {% for restaurant in restaurants %}
-  <li>
-    {{ restaurant.name }}
-  </li>
-{% endfor %}
-</ul>
-{% else %}
-<h3>No restaurants are open at the provided time.</h3>
-{% endif %}
+<head>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+</head>
+
+<body>
+  <div class="container">
+    <div class="mt-5">
+      {% if restaurants.count > 0 %}
+      <h3>These {{ restaurants.count }} restaurants are open on the provided date at the provided time:</h3>
+      <ul>
+        {% for restaurant in restaurants %}
+        <li>
+          {{ restaurant.name }}
+        </li>
+      {% endfor %}
+      </ul>
+      {% else %}
+      <h3>No restaurants are open at the provided time.</h3>
+      {% endif %}
+    </div>
+  </div>
+</body>
